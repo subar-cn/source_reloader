@@ -106,7 +106,7 @@ class ReloaderObserver < Sketchup::AppObserver
   end
 
   def onUnloadExtension(extension_name)
-    SourceReloader.quit! if extension_name == 'source_reloader'
+    SourceReloader.quit! if extension_name == '源码自动重载'
   end
 end
 
