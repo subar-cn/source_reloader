@@ -6,8 +6,8 @@ module SourceReloader
     file_loaded(__FILE__)
 
     loader = File.join('source_reloader', 'reloader')
-    ex = SketchupExtension.new("source_reloader", loader)
-    ex.description = '源码自动重载工具'
+    ex = SketchupExtension.new("源码自动重载", loader)
+    ex.description = '用于本机插件开发过程中，自动重新加载有过修改的文件。'
     ex.version = "1.0"
     ex.copyright = 'SUAPP © 2023'
     ex.creator = 'SUAPP'

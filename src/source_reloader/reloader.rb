@@ -5,13 +5,15 @@ module SourceReloader
   class Reloader
     include Singleton
 
+    attr_reader :cache, :mtimes
+
     def initialize
       @cache, @mtimes = {}, {}
     end
 
     def reload!(stderr = $stderr)
       rotation do |file, mtime|
-        previous_mtime = @mtimes[file] ||= mtime
+        previous_mtime = mtimes[file] ||= mtime
         safe_load(file, mtime, stderr) if mtime > previous_mtime
       end
     end
@@ -26,11 +28,11 @@ module SourceReloader
     # A safe Kernel::load, issuing the hooks depending on the results
     def safe_load(file, mtime, stderr = $stderr)
       mute_warnings { load(file) }
-      stderr.send(:puts, "[#{Time.now.strftime('%F %T')}]: reloaded `#{file}'")
+      stderr.send(:puts, "[#{Time.now.strftime('%F %T')}] 文件更新: #{file}")
     rescue LoadError, SyntaxError => ex
       stderr.send(:puts, ex)
     ensure
-      @mtimes[file] = mtime
+      mtimes[file] = mtime
     end
 
     def rotation
@@ -43,15 +45,16 @@ module SourceReloader
         found, stat = figure_path(file, paths)
         next unless found && stat && mtime = stat.mtime
 
-        @cache[file] = found
-
+        cache[file] = found
         yield(found, mtime)
       }.compact
     end
 
     def figure_path(file, paths)
-      found = @cache[file]
-      found = file if !found && Pathname.new(file).absolute?
+      if !(found = cache[file]) && Pathname.new(file).absolute?
+        found = file
+      end
+
       found, stat = safe_stat(found)
       return found, stat if found
 
@@ -65,30 +68,30 @@ module SourceReloader
     end
 
     def safe_stat(file)
-      return unless file
-      stat = ::File.stat(file)
-      return file, stat if stat.file?
+      if file && (stat = ::File.stat(file)).file?
+        [file, stat]
+      end
     rescue Errno::ENOENT, Errno::ENOTDIR, Errno::ESRCH
-      @cache.delete(file) and false
+      cache.delete(file) && false
     end
   end
 
   module_function
 
   def toggle!
-    if $reloader_id.nil?
-      $reloader_id = UI.start_timer(2, true) { Reloader.instance.reload! }
-      puts "\e[31m[#{Time.now.strftime('%F %T')}] 源码自动重载已开启！\e[0m"
+    if $reloader_timer_id.nil?
+      $reloader_timer_id = UI.start_timer(2, true) { Reloader.instance.reload! }
+      puts "[#{Time.now.strftime('%F %T')}] 源码自动重载已开启！"
     else
       quit!
     end
   end
 
   def quit!
-    unless $reloader_id.nil?
-      UI.stop_timer($reloader_id)
-      puts "\e[31m[#{Time.now.strftime('%F %T')}] 源码自动重载已关闭！\e[0m"
-      $reloader_id = nil
+    unless $reloader_timer_id.nil?
+      UI.stop_timer($reloader_timer_id)
+      puts "[#{Time.now.strftime('%F %T')}] 源码自动重载已关闭！"
+      $reloader_timer_id = nil
     end
   end
 end
@@ -103,7 +106,7 @@ class ReloaderObserver < Sketchup::AppObserver
   end
 
   def onUnloadExtension(extension_name)
-    SourceReloader.quit!
+    SourceReloader.quit! if extension_name == 'source_reloader'
   end
 end
 
