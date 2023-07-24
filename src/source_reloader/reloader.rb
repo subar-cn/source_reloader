@@ -71,6 +71,8 @@ module SourceReloader
 
       paths.find do |possible_path|
         path = ::File.join(possible_path, file)
+        next unless File.exist?(path)
+
         found, stat = safe_stat(path)
         return ::File.expand_path(found), stat if found
       end
@@ -82,8 +84,10 @@ module SourceReloader
       if file && (stat = ::File.stat(file)).file?
         [file, stat]
       end
-    rescue Errno::ENOENT, Errno::ENOTDIR, Errno::ESRCH
-      cache.delete(file) && false
+    rescue Errno::ENOENT, Errno::ENOTDIR, Errno::ESRCH, Errno::EINVAL
+      $LOADED_FEATURES.delete(file)
+      cache.delete(file)
+      false
     end
   end
 
