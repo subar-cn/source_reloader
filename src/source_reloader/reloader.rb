@@ -35,7 +35,7 @@ module SourceReloader
         prefix = ex.backtrace.map { |s| s[/`<module:(\w+)>'$/, 1] }.compact.reverse.join('::')
         full_name = [prefix, class_name].join('::')
         if ::Object.const_defined?(full_name)
-          ::Object.const_get(prefix).send(:remove_const, class_name)
+          (prefix.empty? ? ::Object : ::Object.const_get(prefix)).send(:remove_const, class_name)
           stderr.send(:puts, "[#{Time.now.strftime('%F %T')}] 强制更新: #{file}")
           retry
         end
