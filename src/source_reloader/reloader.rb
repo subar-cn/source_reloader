@@ -32,7 +32,7 @@ module SourceReloader
     rescue TypeError => ex
       stderr.send(:puts, ex)
       if (class_name = ex.message[/superclass mismatch for class (\w+)/, 1])
-        prefix = ex.backtrace.map { |s| s[/`<module:(\w+)>'$/, 1] }.compact.reverse.join('::')
+        prefix = ex.backtrace.map { |s| s[/`<(?:module|class):(\w+)>'$/, 1] }.compact.reverse.join('::')
         full_name = [prefix, class_name].join('::')
         if ::Object.const_defined?(full_name)
           (prefix.empty? ? ::Object : ::Object.const_get(prefix)).send(:remove_const, class_name)
